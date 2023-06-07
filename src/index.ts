@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { cleanCharacters } from './cleanCharacters';
 import { cleanDefinitionTestingFiles, parseDefinition, printParseResult } from './parseDefinition';
-import { cleanWordTestingFiles, separateWords } from './separateWords';
+import { cleanWordTestingFiles, findAllWords, separateWords } from './separateWords';
 
 // Define the input and output file paths
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
@@ -30,5 +30,5 @@ wordList.forEach(word => {
 
 printParseResult();
 
-// fs.writeFileSync(wordsDataPath, JSON.stringify(words, null, 2));
-// fs.writeFileSync(wordsListPath, JSON.stringify(wordList, null, 2));
+fs.writeFileSync(wordsDataPath, JSON.stringify(words, null, 2));
+fs.writeFileSync(wordsListPath, JSON.stringify(wordList, null, 2));

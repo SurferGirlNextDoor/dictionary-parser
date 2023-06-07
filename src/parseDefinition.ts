@@ -1,7 +1,8 @@
 
 
 import fs from 'fs';
-import { spellingPatternBase } from './separateWords';
+import { spellingPattern } from './separateWords';
+
 const originalDefPath = './output/originalDef.json';
 const parsedDefPath = './output/parsedDef.json';
 
@@ -38,10 +39,6 @@ const fullPattern = `(?<rawDefinitionData>${definitionFormatOptions})`;
 
 let numberOfMismatches = 0;
 
-// NEXT Up: clean data (separate eytml from definitions (a)):
-// start at BANDICOOT
-// use search term `^[(]a[)]`
-
 export function cleanDefinitionTestingFiles() {
   if (fs.existsSync(originalDefPath)) {
     fs.unlinkSync(originalDefPath);
@@ -55,6 +52,10 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
   const definitionSectioningRegex = new RegExp(paragraphSplitterPattern, 'mg');
   let rawSections: string[] = [];
   let result;
+
+  if (definitionSection.trim() === '') {
+    console.error(`No definition section found for spelling ${spelling}`);
+  }
 
   const definitionSectionWithEndingNewlines = `${definitionSection}\n\n`;
   while ((result = definitionSectioningRegex.exec(definitionSectionWithEndingNewlines)) !== null) {
@@ -81,13 +82,18 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
     const example = sectionResult.groups?.example;
     const unlabeled = sectionResult.groups?.unlabeled;
 
-    // if (unlabeled) {
+    if (unlabeled) {
 
-    //     console.log('-----------');
-    //     console.log(unlabeled);
-    //     console.log('-----------');
+      const spellingRegex = new RegExp(spellingPattern, 'mg');
+      if (spellingRegex.test(unlabeled)) {
+        console.log('-----------');
+        console.log('word: ', spelling);
+        console.log(unlabeled);
+      }
 
-    // }
+
+
+    }
   }
 
   const parsedRawData = rawSections.join('\n\n').trim();
@@ -102,5 +108,7 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
 }
 
 export function printParseResult() {
-  console.log('mismatch count:', numberOfMismatches)
+  if (numberOfMismatches) {
+    console.log('mismatch count:', numberOfMismatches)
+  }
 }

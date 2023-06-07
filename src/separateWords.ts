@@ -1,20 +1,26 @@
 import fs from 'fs';
 const originalPath = './output/original.json';
 const parsedPath = './output/parsed.json';
-export const spellingPatternBase = "^[A-Z][A-Z;.'1 -,]*$";
-export const spellingPatternBase2 = "[A-Z][A-Z;.'1 -,]*";
+
+export const spellingPatternBase = "^[A-Z][A-Z;.'1 ,-]*$";
 export const anyCharOrNewline = '(?:.|\n)';
-const spellingPattern = `(?<spelling>${spellingPatternBase})`;
+export const spellingPattern = `(?<spelling>${spellingPatternBase})`;
 
 // Use [ ] to represent a space because \s and \f don't seem to work for some reason.
-const pronunciationPattern = '(?<pronunciation>(?:\n(?!\n)(?![ ]*[(]a)|[^\n])*)';
+const doubleNewlineOrStartOfDefinition = '\n(?:\n|[ ]*[(]a)';
+const notADoubleNewlineOrStartOfDefinition = '\n(?!\n)(?![ ]*[(]a)';
 
-const definitionPattern = `(?<definition>(?:${anyCharOrNewline}(?!\n\n${spellingPatternBase2}\n))+)`;
-const definitionPatternOld = `(?<definition>(?:.*\n\n(?!${spellingPatternBase}))+)`;
-const fullPattern = `^(?<rawData>${spellingPattern}\n${pronunciationPattern}(?:\n\n)?${definitionPattern})\n\n`;
+const pronunciationPattern = `(?<pronunciation>(?:${notADoubleNewlineOrStartOfDefinition}|[^\n])*)`;
+
+const definitionPattern = `(?<definition>(?:${anyCharOrNewline}(?!${spellingPatternBase}))+)`;
+const fullPattern = `(?<rawData>${spellingPattern}\n${pronunciationPattern}${doubleNewlineOrStartOfDefinition}${definitionPattern})\n\n`;
+
+// To log the pattern, replace the invisible newlines with the newline string
+// when writing to the console.
+// console.log(fullPattern.replace(/\n/g, '\\n'))
 
 const lastWordInData = 'ZYTHUM';
-const totalNumberOfWords = 98861;
+const totalNumberOfWords = 98859;
 
 function addWord(words: Record<string, WordData>, 
   wordList: string[], 
@@ -46,8 +52,41 @@ export function cleanWordTestingFiles() {
   }
 }
 
+export function findAllWords(text: string): Record<string, number> {
+  const allWords: Record<string, number> = {};
+  let result;
+  const spellingRegex = new RegExp(spellingPattern, 'mg');
+
+  while ((result = spellingRegex.exec(text)) !== null) {
+    const spelling = result.groups?.spelling;
+    if (!spelling) {
+      throw new Error('***************************** find all word pass: no word found');
+    }
+
+    // End of file marker does not count as a word
+    if (spelling === 'ENDOFFILE') {
+      continue;
+    }
+
+    if (allWords[spelling]) {
+      allWords[spelling] = allWords[spelling] + 1;
+    }
+    
+    allWords[spelling] = 1;
+  }
+
+  const wordsFoundCount = Object.keys(allWords).length;
+  if (wordsFoundCount !== totalNumberOfWords) {
+    console.log(`Found an unexpected number of words: ${wordsFoundCount}.  Number of words expected: ${totalNumberOfWords}`)
+  }
+
+  return allWords;
+}
+
 export function separateWords(text: string): RawWordDataResult {
-console.log(fullPattern);
+  // Find all the words using their formatting so we can double check that we are parsing the
+  // word pronunciations and definitions correctly.
+  const allWords = findAllWords(text);
 
   const wordSplitRegex = new RegExp(fullPattern, 'mg');
 
@@ -61,7 +100,7 @@ console.log(fullPattern);
     const spelling = result.groups?.spelling;
 
     // if (spelling === 'BLACK') {
-      console.log(result.groups)
+      // console.log(result.groups)
     // }
 
     if (!spelling) {
@@ -92,7 +131,7 @@ console.log(fullPattern);
       fs.writeFileSync(originalPath, trimmedOriginalText);
       fs.writeFileSync(parsedPath, trimmedRawData);
 
-      throw new Error('***************************** originalTextSection did not match parsed rawData');
+      throw new Error(`***************************** originalTextSection did not match parsed rawData: ${spelling}`);
     }
     textIndex = textEndIndex;
   }
@@ -104,7 +143,21 @@ console.log(fullPattern);
 
   // Make sure we got all the words we expected.
   if (wordList.length !== totalNumberOfWords) {
-    console.error('unable to finish parsing file, wordList.length:', wordList.length)
+    console.log('unable to finish parsing file, wordList.length:', wordList.length)
+  }
+
+  const wordsFoundOnlyInWordSearch = Object.keys(allWords).filter(wordSpelling => !words[wordSpelling]);
+  const wordsFoundOnlyInDefinitionSearch = Object.keys(words).filter(wordSpelling => allWords[wordSpelling] === undefined);
+
+  if (wordsFoundOnlyInDefinitionSearch.length || wordsFoundOnlyInWordSearch.length) {
+    if (wordsFoundOnlyInDefinitionSearch.length) {
+      console.error(`******************* Words found only in definition search: ${wordsFoundOnlyInDefinitionSearch}`)
+    }
+    
+    if (wordsFoundOnlyInWordSearch.length) {
+      wordsFoundOnlyInWordSearch.forEach(word => console.log(word));
+      console.error(`******************* Words found only in word search: ${wordsFoundOnlyInWordSearch}`)
+    }
   }
 
   return {

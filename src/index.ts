@@ -1,20 +1,21 @@
 import fs from 'fs';
 import { cleanCharacters } from './cleanCharacters';
 import { cleanDefinitionTestingFiles, parseDefinition, printParseResult } from './parseDefinition';
-import { cleanWordTestingFiles, findAllWords, separateWords } from './separateWords';
+import { cleanWordTestingFiles, separateWords } from './separateWords';
 
-// Define the input and output file paths
+// Define the input and output file paths.
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
 const wordsListPath = './output/wordList.json';
 const wordsDataPath = './output/wordData.json';
 
+// Delete generated data from the last run.
 cleanWordTestingFiles();
 cleanDefinitionTestingFiles();
 
-// Read the input file
+// Read the input file.
 const rawDictionaryData = fs.readFileSync(dictionaryDataPath, 'utf-8')
 
-// Clean the data
+// Clean the data.
 const dictionaryData = cleanCharacters(rawDictionaryData);
 
 // Separate the words and definition sections so we can parse them further.

@@ -84,15 +84,13 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
 
     if (unlabeled) {
 
+      // Make sure we aren't mistaking a new word for a part of the previous definition.
       const spellingRegex = new RegExp(spellingPattern, 'mg');
       if (spellingRegex.test(unlabeled)) {
         console.log('-----------');
         console.log('word: ', spelling);
         console.log(unlabeled);
       }
-
-
-
     }
   }
 

@@ -15,7 +15,7 @@ const numberedDefinitionPattern = `(?<numberedDef>^[0-9].*)?`
 const letteredDefinitionPattern = `(?<letteredDef>^[(][a-c][)].*)?`
 
 const synonymPattern = `(?<synonym>^Syn..*)?`
-const notePattern = `(?<note>^Note:.*)?`
+const notePattern = `(?<note>^Note:..*)?`
 
 // `OTHER: ` and `EXAMPLE: ` is added to the "cleaned version of the data to mark unexpected
 // definition sections that don't fit into another general category.
@@ -48,11 +48,18 @@ export function cleanDefinitionTestingFiles() {
   }
 }
 
-export function parseDefinition(spelling: string, definitionSection: string): void {
+export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): WordVariant {
   const definitionSectioningRegex = new RegExp(paragraphSplitterPattern, 'mg');
   let rawSections: string[] = [];
   let result;
 
+  const wordVariant: WordVariant = {
+    pronunciation: variantRaw.pronunciation,
+    rawData: variantRaw.rawData,
+    definitions: []
+  };
+
+  const definitionSection = variantRaw.definitionSection;
   if (definitionSection.trim() === '') {
     console.error(`No definition section found for spelling ${spelling}`);
   }
@@ -65,6 +72,7 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
     }
 
     rawSections.push(rawDefinitionSection);
+
 
     const sectionRegex = new RegExp(fullPattern, 'mg');
 
@@ -92,8 +100,44 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
         console.log(unlabeled);
       }
     }
+
+    if (defaultDef) {
+      wordVariant.definitions.push(rawDefinitionSection);
+    }
+    if (numberedDef) {
+      wordVariant.definitions.push(rawDefinitionSection);
+    }
+    if (letteredDef) {
+      wordVariant.definitions.push(rawDefinitionSection);
+    }
+    if (synonym) {
+      if (!wordVariant.synonyms) {
+        wordVariant.synonyms = [];
+      }
+      wordVariant.synonyms.push(rawDefinitionSection);
+    }
+
+    if (note) {
+      if (!wordVariant.notes) {
+        wordVariant.notes = [];
+      }
+      wordVariant.notes.push(rawDefinitionSection);
+    }
+    if (other) {
+      if (!wordVariant.others) {
+        wordVariant.others = [];
+      }
+      wordVariant.others.push(rawDefinitionSection);
+    }
+    if (example) {
+      if (!wordVariant.examples) {
+        wordVariant.examples = [];
+      }
+      wordVariant.examples.push(rawDefinitionSection);
+    }
   }
 
+  // Make sure we got all of the data when we parsed the sections.
   const parsedRawData = rawSections.join('\n\n').trim();
   if (parsedRawData !== definitionSection.trim()) {
     fs.writeFileSync(originalDefPath, definitionSection);
@@ -103,6 +147,8 @@ export function parseDefinition(spelling: string, definitionSection: string): vo
     throw new Error('***************************** originalDefinitionSection did not match parsed rawData');
     numberOfMismatches++;
   }
+
+  return wordVariant;
 }
 
 export function printParseResult() {

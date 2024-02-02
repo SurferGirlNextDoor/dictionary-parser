@@ -23,7 +23,7 @@ const fullPattern = `(?<rawData>${spellingPattern}\n${pronunciationPattern}${dou
 const lastWordInData = 'ZYTHUM';
 const totalNumberOfWords = 98859;
 
-function addWord(words: Record<string, WordData>, 
+function addWord(words: Record<string, WordDataRaw>, 
   wordList: string[], 
   spelling: string, 
   pronunciation: string, 
@@ -32,7 +32,7 @@ function addWord(words: Record<string, WordData>,
   if (!words[spelling]) {
     words[spelling] = {
       spelling,
-      variants: []
+      variants: [],
     };
     wordList.push(spelling);
   }
@@ -99,7 +99,7 @@ export function separateWords(text: string): RawWordDataResult {
 
   const wordSplitRegex = new RegExp(fullPattern, 'mg');
 
-  const words: Record<string, WordData> = {};
+  const wordsRaw: Record<string, WordDataRaw> = {};
   const wordList: string[] = [];
   let lastSpelling = '';
 
@@ -127,7 +127,7 @@ export function separateWords(text: string): RawWordDataResult {
 
     const trimmedRawData = rawData.trim();
 
-    addWord(words, wordList, spelling, pronunciation.trim(), definition.trim(), trimmedRawData);
+    addWord(wordsRaw, wordList, spelling, pronunciation.trim(), definition.trim(), trimmedRawData);
 
     lastSpelling = spelling;
     const textEndIndex = textIndex + rawData.length + 2; // +2 for the \n\n
@@ -153,8 +153,8 @@ export function separateWords(text: string): RawWordDataResult {
 
   // Make sure the word and word + definition parsing regex patterns produce the same set
   // of words as their results.
-  const wordsFoundOnlyInWordSearch = Object.keys(allWords).filter(wordSpelling => !words[wordSpelling]);
-  const wordsFoundOnlyInDefinitionSearch = Object.keys(words).filter(wordSpelling => allWords[wordSpelling] === undefined);
+  const wordsFoundOnlyInWordSearch = Object.keys(allWords).filter(wordSpelling => !wordsRaw[wordSpelling]);
+  const wordsFoundOnlyInDefinitionSearch = Object.keys(wordsRaw).filter(wordSpelling => allWords[wordSpelling] === undefined);
 
   if (wordsFoundOnlyInDefinitionSearch.length || wordsFoundOnlyInWordSearch.length) {
     if (wordsFoundOnlyInDefinitionSearch.length) {
@@ -168,7 +168,7 @@ export function separateWords(text: string): RawWordDataResult {
   }
 
   return {
-    words,
+    wordsRaw,
     wordList
   };
 }

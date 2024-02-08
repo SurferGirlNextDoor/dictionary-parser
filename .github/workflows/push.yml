@@ -1,0 +1,76 @@
+name: push
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+    - name: AWS login
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_ROLE_REGION }}
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set short git commit SHA
+      id: git
+      shell: bash
+      run: echo "short_sha=$(git rev-parse --short ${{ github.sha }})" >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Cache NPM dependencies
+      uses: actions/cache@v3
+      id: cache-deps
+      with:
+        path: |
+          node_modules
+        key: ${{ runner.os }}-npm-v4-${{ hashFiles('package-lock.json') }}
+    
+    - name: Install dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      run: |
+        npm ci
+        npm list
+
+    - name: Generate Data
+      run: |
+        node -v
+        npm -v
+        npm run parse
+  
+    - name: Compress
+      run: |
+        cat output/wordData.json | jq -c | gzip -9 > output/wordData.json.gz
+        ls -al output
+
+    - name: Version
+      id: version
+      shell: bash
+      env:
+        SHORT_SHA: ${{ steps.git.outputs.short_sha }}
+      run: |
+        echo "value=v$(date +%Y%m%d)-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload to S3
+      shell: bash
+      env:
+        S3_URL: s3://${{ vars.S3_BUCKET }}/${{steps.version.outputs.value}}/wordData.json.gz
+      run: |
+        echo aws s3 cp output/wordData.json.gz $S3_URL
+        echo -e "### S3 URL\n\n[${S3_URL}](${S3_URL})" >> "$GITHUB_STEP_SUMMARY"

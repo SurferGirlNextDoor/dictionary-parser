@@ -72,5 +72,5 @@ jobs:
       env:
         S3_URL: s3://${{ vars.S3_BUCKET }}/${{steps.version.outputs.value}}/wordData.json.gz
       run: |
-        echo aws s3 cp output/wordData.json.gz $S3_URL
+        aws s3 cp output/wordData.json.gz $S3_URL
         echo -e "### S3 URL\n\n[${S3_URL}](${S3_URL})" >> "$GITHUB_STEP_SUMMARY"

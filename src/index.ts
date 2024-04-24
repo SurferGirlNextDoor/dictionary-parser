@@ -2,11 +2,14 @@ import fs from 'fs';
 import { cleanCharacters } from './cleanCharacters';
 import { cleanDefinitionTestingFiles, parseDefinition, printParseResult } from './parseDefinition';
 import { cleanWordTestingFiles, separateWords } from './separateWords';
-import { populateReverseLookup } from './populateReverseLookup';
+import { populateReverseLookupForWordVariant } from './createReverseLookup';
+import { PhraseWordLookups, buildPhraseWordLookups } from './buildPhraseWordLookups';
+import { WordData, WordDataRaw, WordReferenceData, WordVariant, WordVariantRaw } from './wordDataTypes';
 
 // Define the input and output file paths.
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
-const wordsListPath = './output/wordList.json';
+const wordsListPath = './output/wordIdList.json';
+const wordsReferencesPath = './output/wordReferences.json';
 const wordsDataPath = './output/wordData.json';
 
 // Delete generated data from the last run.
@@ -20,43 +23,59 @@ const rawDictionaryData = fs.readFileSync(dictionaryDataPath, 'utf-8')
 const dictionaryData = cleanCharacters(rawDictionaryData);
 
 // Separate the words and definition sections so we can parse them further.
-const {wordsRaw, wordList} = separateWords(dictionaryData);
-const words: {[index: string]: WordData} = {};
+const {wordIdToRawWord, wordIdList} = separateWords(dictionaryData);
 
-const reverseLookup: {[index: string]: {[index: string]: boolean}} = {};
+// Find the spellings of all the available words, including words with spaces,
+// and populate a lookup based on word id for all available words.
+const phraseWordLookups: PhraseWordLookups = buildPhraseWordLookups(wordIdList, wordIdToRawWord);
 
-wordList.forEach(spelling => {
-  const wordDataRaw: WordDataRaw = wordsRaw[spelling];
+// Process each word into its variant definitions,
+// populating a reverse lookup as we go through each definition.
+const wordIdToWord: {[index: string]: WordData} = {};
+const wordIdToReferenceWordIds: Map<string, string[]> = new Map();
+
+wordIdList.forEach(wordId => {
+  const wordDataRaw: WordDataRaw = wordIdToRawWord[wordId];
 
   const wordData: WordData = {
-    spelling: wordDataRaw.spelling,
+    id: wordDataRaw.id,
+    spellingsString: wordDataRaw.spellingsString,
+    spellings: wordDataRaw.spellings,
     variants: [],
-    wordsThatReferenceThisWord: []
   };
 
   // console.log('parsing word: ', word)
-  wordDataRaw.variants.forEach(variant => {
-    const wordVariant = parseDefinition(spelling, variant);
+  wordDataRaw.variants.forEach((variant: WordVariantRaw) => {
+    const wordVariant = parseDefinition(wordData.spellingsString, variant);
     wordData.variants.push(wordVariant);
-    populateReverseLookup(spelling, variant.definitionSection, reverseLookup);
+    populateReverseLookupForWordVariant(wordData.id, wordData.spellings, wordVariant.rawData, phraseWordLookups, wordIdToReferenceWordIds);
   });
 
-  words[wordData.spelling] = wordData;
+  wordIdToWord[wordData.id] = wordData;
 });
 
-wordList.forEach(spelling => {
-  const references = reverseLookup[spelling.toLowerCase()];
-  if (references) {
-    words[spelling].wordsThatReferenceThisWord = Object.keys(references);
+// Populate reverse lookup reference data.
+const wordIdToWordReferenceData: {[index: string]: WordReferenceData} = {};
 
-    if (words[spelling].wordsThatReferenceThisWord.length > 5000) {
-      console.log('lots of refs: ', spelling)
+// Find words that reference this word.
+wordIdList.forEach(wordId => {
+  const wordReferences = wordIdToReferenceWordIds.get(wordId);
+  if (wordReferences) {
+    if (wordReferences && wordReferences.length > 5000) {
+      // These have so many references that they aren't useful,
+      // so don't store them.
+      // console.log(' ', wordIdToWord[wordId]?.spellingsString)
+    } else {
+      wordIdToWordReferenceData[wordId] = {
+        wordId: wordId,
+        referenceWordIds: wordReferences
+      }
     }
   }
-  
 });
 
 printParseResult();
 
-fs.writeFileSync(wordsDataPath, JSON.stringify(words, null, 2));
-fs.writeFileSync(wordsListPath, JSON.stringify(wordList, null, 2));
+fs.writeFileSync(wordsDataPath, JSON.stringify(Object.values(wordIdToWord), null, 2));
+fs.writeFileSync(wordsReferencesPath, JSON.stringify(Object.values(wordIdToWordReferenceData), null, 2));
+fs.writeFileSync(wordsListPath, JSON.stringify(wordIdList, null, 2));

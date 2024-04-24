@@ -2,6 +2,8 @@
 
 import fs from 'fs';
 import { spellingPattern } from './separateWords';
+import { parsePartsOfSpeech } from './parsePartsOfSpeech';
+import { WordVariant, WordVariantRaw } from './wordDataTypes';
 
 const originalDefPath = './output/originalDef.json';
 const parsedDefPath = './output/parsedDef.json';
@@ -58,6 +60,19 @@ export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): W
     rawData: variantRaw.rawData,
     definitions: []
   };
+
+  const partsOfSpeechResult = parsePartsOfSpeech(spelling, variantRaw.pronunciation);
+  if (partsOfSpeechResult) {
+    if (partsOfSpeechResult.partsOfSpeech?.length > 0) {
+      wordVariant.partsOfSpeech = partsOfSpeechResult.partsOfSpeech;
+    }
+    if (partsOfSpeechResult.isArchaic) {
+      wordVariant.isArchaic = true;
+    }
+    if (partsOfSpeechResult.isObsolete) {
+      wordVariant.isObsolete = true;
+    }
+  }
 
   const definitionSection = variantRaw.definitionSection;
   if (definitionSection.trim() === '') {

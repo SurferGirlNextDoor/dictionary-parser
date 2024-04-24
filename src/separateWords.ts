@@ -1,8 +1,14 @@
 import fs from 'fs';
+import {v5 as uuidv5} from 'uuid';
+import { RawWordDataResult, WordDataRaw } from './wordDataTypes';
+
+const idNamespace = '38922e47-2a48-40c1-a69a-f2a4694d7113';
+
 const originalPath = './output/original.json';
 const parsedPath = './output/parsed.json';
 
 export const spellingPatternBase = "^[A-Z][A-Z;.'1 ,-]*$";
+export const singleSpellingPattern = "^[A-Z][A-Z'1 -]*";
 export const anyCharOrNewline = '(?:.|\n)';
 export const spellingPattern = `(?<spelling>${spellingPatternBase})`;
 
@@ -23,21 +29,30 @@ const fullPattern = `(?<rawData>${spellingPattern}\n${pronunciationPattern}${dou
 const lastWordInData = 'ZYTHUM';
 const totalNumberOfWords = 98859;
 
-function addWord(words: Record<string, WordDataRaw>, 
-  wordList: string[], 
+function addWord(spellingToWord: Record<string, WordDataRaw>, 
+  wordIdList: string[], 
   spelling: string, 
   pronunciation: string, 
   definitionSection: string,
   rawData: string) {
-  if (!words[spelling]) {
-    words[spelling] = {
-      spelling,
+  const wordId = uuidv5(spelling, idNamespace);
+
+  // A word can have multiple spellings, so get the list of them.
+  const spellings = spelling.split(';').map(spelling => {
+    return spelling.trim();
+  });
+
+  if (!spellingToWord[spelling]) {
+    spellingToWord[spelling] = {
+      id: wordId,
+      spellingsString: spelling,
+      spellings,
       variants: [],
     };
-    wordList.push(spelling);
+    wordIdList.push(wordId);
   }
 
-  words[spelling].variants.push({
+  spellingToWord[spelling].variants.push({
     pronunciation,
     definitionSection,
     rawData
@@ -99,8 +114,8 @@ export function separateWords(text: string): RawWordDataResult {
 
   const wordSplitRegex = new RegExp(fullPattern, 'mg');
 
-  const wordsRaw: Record<string, WordDataRaw> = {};
-  const wordList: string[] = [];
+  const spellingToWord: Record<string, WordDataRaw> = {};
+  const wordIdList: string[] = [];
   let lastSpelling = '';
 
   let textIndex = 0;
@@ -127,7 +142,7 @@ export function separateWords(text: string): RawWordDataResult {
 
     const trimmedRawData = rawData.trim();
 
-    addWord(wordsRaw, wordList, spelling, pronunciation.trim(), definition.trim(), trimmedRawData);
+    addWord(spellingToWord, wordIdList, spelling, pronunciation.trim(), definition.trim(), trimmedRawData);
 
     lastSpelling = spelling;
     const textEndIndex = textIndex + rawData.length + 2; // +2 for the \n\n
@@ -147,14 +162,14 @@ export function separateWords(text: string): RawWordDataResult {
   }
 
   // Make sure we got all the words we expected.
-  if (wordList.length !== totalNumberOfWords) {
-    console.log('unable to finish parsing file, wordList.length:', wordList.length)
+  if (wordIdList.length !== totalNumberOfWords) {
+    console.log('unable to finish parsing file, wordIdList.length:', wordIdList.length)
   }
 
   // Make sure the word and word + definition parsing regex patterns produce the same set
   // of words as their results.
-  const wordsFoundOnlyInWordSearch = Object.keys(allWords).filter(wordSpelling => !wordsRaw[wordSpelling]);
-  const wordsFoundOnlyInDefinitionSearch = Object.keys(wordsRaw).filter(wordSpelling => allWords[wordSpelling] === undefined);
+  const wordsFoundOnlyInWordSearch = Object.keys(allWords).filter(wordSpelling => !spellingToWord[wordSpelling]);
+  const wordsFoundOnlyInDefinitionSearch = Object.keys(spellingToWord).filter(wordSpelling => allWords[wordSpelling] === undefined);
 
   if (wordsFoundOnlyInDefinitionSearch.length || wordsFoundOnlyInWordSearch.length) {
     if (wordsFoundOnlyInDefinitionSearch.length) {
@@ -167,8 +182,13 @@ export function separateWords(text: string): RawWordDataResult {
     }
   }
 
+  const wordIdToRawWord: Record<string, WordDataRaw> = {};
+  Object.values(spellingToWord).forEach(word => {
+    wordIdToRawWord[word.id] = word;
+  });
+
   return {
-    wordsRaw,
-    wordList
+    wordIdToRawWord,
+    wordIdList
   };
 }

@@ -12,7 +12,7 @@ The dictionary is first cleaned, and its characters are verified to include a fi
 
 Then the words are parsed, using 2 different regex patterns, one to find just the words, and one to find the words and their content.  The word lists from these 2 passes must match to validate that the regex parse patterns are correct.
 
-After the parsing is complete, 3output files are generated:
+After the parsing is complete, 3 output files are generated:
 
 `output\wordIdList.json`, `output\wordData.json`, and `output\wordReferences.json`
 
@@ -23,3 +23,7 @@ The schema for the word data includes the spelling of the word at the top level 
 To run:
 
 `npm run parse`
+
+## Uploading the data to the cloud
+
+The `push.yml` file will upload the latest word data to S3 when the code is pushed to the `main` branch.  From there, it can be imported into the database.

@@ -1,8 +1,6 @@
 import fs from 'fs';
-import {v5 as uuidv5} from 'uuid';
 import { RawWordDataResult, WordDataRaw } from './wordDataTypes';
-
-const idNamespace = '38922e47-2a48-40c1-a69a-f2a4694d7113';
+import { generateWordId } from './generateWordId';
 
 const originalPath = './output/original.json';
 const parsedPath = './output/parsed.json';
@@ -31,28 +29,28 @@ const totalNumberOfWords = 98859;
 
 function addWord(spellingToWord: Record<string, WordDataRaw>, 
   wordIdList: string[], 
-  spelling: string, 
+  spellingsString: string, 
   pronunciation: string, 
   definitionSection: string,
   rawData: string) {
-  const wordId = uuidv5(spelling, idNamespace);
 
   // A word can have multiple spellings, so get the list of them.
-  const spellings = spelling.split(';').map(spelling => {
+  const spellings = spellingsString.split(';').map(spelling => {
     return spelling.trim();
   });
 
-  if (!spellingToWord[spelling]) {
-    spellingToWord[spelling] = {
+  if (!spellingToWord[spellingsString]) {
+    const wordId = generateWordId(spellingsString);
+    spellingToWord[spellingsString] = {
       id: wordId,
-      spellingsString: spelling,
+      spellingsString: spellingsString,
       spellings,
       variants: [],
     };
     wordIdList.push(wordId);
   }
 
-  spellingToWord[spelling].variants.push({
+  spellingToWord[spellingsString].variants.push({
     pronunciation,
     definitionSection,
     rawData

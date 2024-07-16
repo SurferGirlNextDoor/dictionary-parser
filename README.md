@@ -4,7 +4,7 @@ Provides scripts to parse a dictionary in order to programmatically explore word
 
 ## Dictionary source
 
-The dictionary is free from the Gutenberg project: https://www.gutenberg.org/cache/epub/29765/pg29765.txt
+The dictionary is free from the The Gutenberg Project: [The Project Gutenberg eBook of Webster's Unabridged Dictionary](https://www.gutenberg.org/cache/epub/29765/pg29765.txt)
 
 ## The parsing process approach
 

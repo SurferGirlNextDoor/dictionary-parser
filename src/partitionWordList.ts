@@ -1,4 +1,4 @@
-const partitionSplitThreshold = 12000;
+const partitionSplitThreshold = 4000;
 const validFirstLetterRegex = /^[A-Z]$/;
 
 

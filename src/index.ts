@@ -4,15 +4,15 @@ import { cleanDefinitionTestingFiles } from './parseDefinition';
 import { cleanWordTestingFiles, separateWords } from './separateWords';
 import { parseWords } from './parseWords';
 import { partitionWordList } from './partitionWordList';
-import { WordData, WordReferenceData } from './wordDataTypes';
+import { createWordDataForPartition } from './createWordDataForPartition';
 
 // Define the input and output file paths.
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
 const wordsListPath = './output/wordIdList.json';
 const wordsReferencesPath = './output/wordReferences.json';
 const wordsDataPath = './output/wordData.json';
-const wordIdListPathPrefix = './output/wordIdList#';
-const wordsDataPathPrefix = './output/wordData#';
+const spellingsToWordIdsPathPrefix = './output/spellingsToWordIds#';
+const wordsDataPathPrefix = './output/wordDisplayData#';
 const wordsReferencesPathPrefix = './output/wordReferences#';
 
 // Delete generated data from the last run.
@@ -35,32 +35,25 @@ const { wordIdToWord, wordIdToWordReferenceData } = parseWords(wordIdToRawWord, 
 // Write out partitioned word list data.
 const nameToWordIdPartition = partitionWordList(wordIdList);
 Object.keys(nameToWordIdPartition).forEach(partitionName => {
-
-  // Collect all word data for the partition.
-  const partitionWordData: WordData[] = [];
-  nameToWordIdPartition[partitionName].forEach(wordId => {
-    partitionWordData.push(wordIdToWord[wordId]);
-  });
-
-  // Collect all the word reference data for the partition.
-  const partitionReferenceWordData: WordReferenceData[] = [];
-  nameToWordIdPartition[partitionName].forEach(wordId => {
-    partitionReferenceWordData.push(wordIdToWordReferenceData[wordId]);
-  });
-
+  const {
+    spellingToWordIds,
+    referenceWords,
+    wordDisplayData
+  } = createWordDataForPartition(nameToWordIdPartition[partitionName], wordIdToWord, wordIdToWordReferenceData);
+ 
   // Generate partition file names.
-  const wordListfilePath = `${wordIdListPathPrefix}${partitionName}.json`;
+  const spellingsToWordIdsFilePath = `${spellingsToWordIdsPathPrefix}${partitionName}.json`;
   const wordDataFilePath = `${wordsDataPathPrefix}${partitionName}.json`;
   const wordReferenceDataFilePath = `${wordsReferencesPathPrefix}${partitionName}.json`;
 
   // Write out partition data.
-  fs.writeFileSync(wordListfilePath, JSON.stringify(nameToWordIdPartition[partitionName], null, 2));
-  fs.writeFileSync(wordDataFilePath, JSON.stringify(partitionWordData, null, 2));
-  fs.writeFileSync(wordReferenceDataFilePath, JSON.stringify(partitionReferenceWordData, null, 2));
+  fs.writeFileSync(spellingsToWordIdsFilePath, JSON.stringify(spellingToWordIds, null, 2));
+  fs.writeFileSync(wordDataFilePath, JSON.stringify(wordDisplayData, null, 2));
+  fs.writeFileSync(wordReferenceDataFilePath, JSON.stringify(referenceWords, null, 2));
 });
 
 // Write out the final word data in big files.
 // Note: this is useful for debugging, but not so useful for working with the data in the cloud.
 // fs.writeFileSync(wordsDataPath, JSON.stringify(Object.values(wordIdToWord), null, 2));
 // fs.writeFileSync(wordsReferencesPath, JSON.stringify(Object.values(wordIdToWordReferenceData), null, 2));
-// fs.writeFileSync(wordsListPath, JSON.stringify(wordIdList, null, 2));
+fs.writeFileSync(wordsListPath, JSON.stringify(wordIdList, null, 2));

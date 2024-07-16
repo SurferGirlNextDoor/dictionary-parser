@@ -69,10 +69,11 @@ export interface WordData {
 // WHO
 // WITH
 // reference so many words that their word reference list
-// is both very large and not useful, so we don't store it.
+// is both very large and not useful, so we don't store all their words.
 export interface WordReferenceData {
   wordId: string;
   referenceWordIds: string[];
+  hasMoreThan5000References?: boolean;
 }
 
 export interface WordVariant {
@@ -84,6 +85,20 @@ export interface WordVariant {
   notes?: string[];
   examples?: string[];
   others?: string[]
+  isArchaic?: boolean;
+  isObsolete?: boolean;
+}
+
+export interface WordDisplayData {
+  wordId: string;
+  spellingsString: string;
+  variants: WordDisplayVariant[];
+  hasReferences?: boolean;
+}
+
+export interface WordDisplayVariant {
+  rawData: string;
+  partsOfSpeech?: string[];
   isArchaic?: boolean;
   isObsolete?: boolean;
 }

@@ -1,5 +1,4 @@
 
-const wordIdPrefix = 'WORD#';
 const wordIdSeparatorReplacementRegex = /[;][ ]*/g;
 const wordIdRemovalRegex = /[,]/g;
 const wordIdReplacementRegex = /[ '.]/g;
@@ -19,17 +18,16 @@ export function generateWordId(spellingsString: string) {
   // Clean the funky characters from the spelling before we use it for the id
   // so the id will be database key friendly.
   // Use the spelling so that the id can be sorted more easily.
-  const wordIdSuffix = spellingsString.replace(wordIdSeparatorReplacementRegex, '__').replace(wordIdRemovalRegex, '').replace(wordIdReplacementRegex, '_').substring(0, maxWordIdSpellingLength);
-  if (!wordIdSpellingRegex.test(wordIdSuffix)) {
-    throw new Error(`Invalid word id suffix: ${wordIdSuffix} from ${spellingsString}`);
+  const wordId = spellingsString.replace(wordIdSeparatorReplacementRegex, '__').replace(wordIdRemovalRegex, '').replace(wordIdReplacementRegex, '_').substring(0, maxWordIdSpellingLength);
+  if (!wordIdSpellingRegex.test(wordId)) {
+    throw new Error(`Invalid word id suffix: ${wordId} from ${spellingsString}`);
   }
 
   // Make sure the id will be unique.
-  if (wordIdSuffixToSpellingsString.has(wordIdSuffix)) {
-    throw new Error(`Duplicate word id suffix: ${wordIdSuffix} from ${wordIdSuffixToSpellingsString.get(wordIdSuffix)} and ${spellingsString}`);
+  if (wordIdSuffixToSpellingsString.has(wordId)) {
+    throw new Error(`Duplicate word id suffix: ${wordId} from ${wordIdSuffixToSpellingsString.get(wordId)} and ${spellingsString}`);
   }
-  wordIdSuffixToSpellingsString.set(wordIdSuffix, spellingsString);
+  wordIdSuffixToSpellingsString.set(wordId, spellingsString);
 
-  // Generate the word id
-  return `${wordIdPrefix}${wordIdSuffix}`;
+  return wordId;
 }

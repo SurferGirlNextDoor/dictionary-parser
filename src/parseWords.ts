@@ -3,7 +3,9 @@ import { populateReverseLookupForWordVariant } from './createReverseLookup';
 import { PhraseWordLookups, buildPhraseWordLookups } from './buildPhraseWordLookups';
 import { WordData, WordDataRaw, WordReferenceData, WordVariantRaw } from './wordDataTypes';
 
-export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]) {
+const maxWordReferencesToStore = 5000;
+
+export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordReferenceData: {[index: string]: WordReferenceData}} {
   // Find the spellings of all the available words, including words with spaces,
   // and populate a lookup based on word id for all available words.
   const phraseWordLookups: PhraseWordLookups = buildPhraseWordLookups(wordIdList, wordIdToRawWord);
@@ -40,10 +42,12 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
   wordIdList.forEach(wordId => {
     const wordReferences = wordIdToReferenceWordIds.get(wordId);
     if (wordReferences) {
-      if (wordReferences && wordReferences.length > 5000) {
-        // These have so many references that they aren't useful,
-        // so don't store them.
-        // console.log(' ', wordIdToWord[wordId]?.spellingsString)
+      if (wordReferences && wordReferences.length > maxWordReferencesToStore) {
+        wordIdToWordReferenceData[wordId] = {
+          wordId: wordId,
+          referenceWordIds: wordReferences.slice(0, maxWordReferencesToStore - 1),
+          hasMoreThan5000References: true
+        }
       } else {
         wordIdToWordReferenceData[wordId] = {
           wordId: wordId,

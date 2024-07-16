@@ -43,7 +43,7 @@ function addWord(spellingToWord: Record<string, WordDataRaw>,
     const wordId = generateWordId(spellingsString);
     spellingToWord[spellingsString] = {
       id: wordId,
-      spellingsString: spellingsString,
+      spellingsString,
       spellings,
       variants: [],
     };

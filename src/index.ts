@@ -5,12 +5,14 @@ import { cleanWordTestingFiles, separateWords } from './separateWords';
 import { parseWords } from './parseWords';
 import { partitionWordList } from './partitionWordList';
 import { createWordDataForPartition } from './createWordDataForPartition';
+import { buildPartOfSpeechLookup } from './buildPartOfSpeechLookup';
 
 // Define the input and output file paths.
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
 const wordsListPath = './output/wordIdList.json';
 const wordsReferencesPath = './output/wordReferences.json';
 const wordsDataPath = './output/wordData.json';
+const partsOfSpeechLookupPath = './output/partsOfSpeechLookup.json';
 const spellingsToWordIdsPathPrefix = './output/spellingsToWordIds#';
 const wordsDataPathPrefix = './output/wordDisplayData#';
 const wordsReferencesPathPrefix = './output/wordReferences#';
@@ -32,6 +34,9 @@ const {wordIdToRawWord, wordIdList} = separateWords(dictionaryData);
 // including the reverse lookups, into a db.
 const { wordIdToWord, wordIdToWordReferenceData } = parseWords(wordIdToRawWord, wordIdList);
 
+// Build out a lookup of part of speech to all the words that identify as that part of speech.
+const partOfSpeechToWordIds: {[index: string]: string[]} = buildPartOfSpeechLookup(wordIdToWord);
+
 // Write out partitioned word list data.
 const nameToWordIdPartition = partitionWordList(wordIdList);
 Object.keys(nameToWordIdPartition).forEach(partitionName => {
@@ -51,6 +56,8 @@ Object.keys(nameToWordIdPartition).forEach(partitionName => {
   fs.writeFileSync(wordDataFilePath, JSON.stringify(wordDisplayData, null, 2));
   fs.writeFileSync(wordReferenceDataFilePath, JSON.stringify(referenceWords, null, 2));
 });
+
+fs.writeFileSync(partsOfSpeechLookupPath, JSON.stringify(partOfSpeechToWordIds, null, 2));
 
 // Write out the final word data in big files.
 // Note: this is useful for debugging, but not so useful for working with the data in the cloud.

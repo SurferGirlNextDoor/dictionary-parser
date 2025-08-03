@@ -1,4 +1,4 @@
-import { WordData, WordVariant } from "./wordDataTypes";
+import { WordData, WordExportData, WordVariant } from "./wordDataTypes";
 
 export function buildPartOfSpeechLookup(wordIdToWord: {[index: string]: WordData}): {[index: string]: string[]} {
   const partOfSpeechToWordIds: {[index: string]: string[]} = {};

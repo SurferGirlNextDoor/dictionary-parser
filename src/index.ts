@@ -32,35 +32,27 @@ const {wordIdToRawWord, wordIdList} = separateWords(dictionaryData);
 
 // Parse the words into the format we need to populate the word lookup,
 // including the reverse lookups, into a db.
-const { wordIdToWord, wordIdToWordReferenceData } = parseWords(wordIdToRawWord, wordIdList);
+const { wordIdToWord, wordIdToWordExport } = parseWords(wordIdToRawWord, wordIdList);
 
 // Build out a lookup of part of speech to all the words that identify as that part of speech.
-const partOfSpeechToWordIds: {[index: string]: string[]} = buildPartOfSpeechLookup(wordIdToWord);
+// const partOfSpeechToWordIds: {[index: string]: string[]} = buildPartOfSpeechLookup(wordIdToWord);
 
 // Write out partitioned word list data.
 const nameToWordIdPartition = partitionWordList(wordIdList);
 Object.keys(nameToWordIdPartition).forEach(partitionName => {
-  const {
-    spellingToWordIds,
-    referenceWords,
-    wordDisplayData
-  } = createWordDataForPartition(nameToWordIdPartition[partitionName], wordIdToWord, wordIdToWordReferenceData);
+  const  wordData = createWordDataForPartition(nameToWordIdPartition[partitionName], wordIdToWordExport);
  
   // Generate partition file names.
-  const spellingsToWordIdsFilePath = `${spellingsToWordIdsPathPrefix}${partitionName}.json`;
   const wordDataFilePath = `${wordsDataPathPrefix}${partitionName}.json`;
-  const wordReferenceDataFilePath = `${wordsReferencesPathPrefix}${partitionName}.json`;
 
   // Write out partition data.
-  fs.writeFileSync(spellingsToWordIdsFilePath, JSON.stringify(spellingToWordIds, null, 2));
-  fs.writeFileSync(wordDataFilePath, JSON.stringify(wordDisplayData, null, 2));
-  fs.writeFileSync(wordReferenceDataFilePath, JSON.stringify(referenceWords, null, 2));
+  fs.writeFileSync(wordDataFilePath, JSON.stringify(wordData, null, 2));
 });
 
-fs.writeFileSync(partsOfSpeechLookupPath, JSON.stringify(partOfSpeechToWordIds, null, 2));
+// fs.writeFileSync(partsOfSpeechLookupPath, JSON.stringify(partOfSpeechToWordIds, null, 2));
 
 // Write out the final word data in big files.
 // Note: this is useful for debugging, but not so useful for working with the data in the cloud.
 // fs.writeFileSync(wordsDataPath, JSON.stringify(Object.values(wordIdToWord), null, 2));
-// fs.writeFileSync(wordsReferencesPath, JSON.stringify(Object.values(wordIdToWordReferenceData), null, 2));
-fs.writeFileSync(wordsListPath, JSON.stringify(wordIdList, null, 2));
+// fs.writeFileSync(wordsReferencesPath, JSON.stringify(Object.values(wordIdToWordReferences), null, 2));
+// fs.writeFileSync(wordsListPath, JSON.stringify(wordIdList, null, 2));

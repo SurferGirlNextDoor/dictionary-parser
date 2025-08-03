@@ -31,6 +31,19 @@ export interface WordVariantRaw {
   definitionSection: string;
 }
 
+export interface WordVariant {
+  rawData: string;
+  pronunciation: string;
+  partsOfSpeech?: string[];
+  definitions: string[];
+  synonyms?: string[];
+  notes?: string[];
+  examples?: string[];
+  others?: string[]
+  isArchaic?: boolean;
+  isObsolete?: boolean;
+}
+
 export interface WordData {
   id: string;
   spellingsString: string;
@@ -70,35 +83,10 @@ export interface WordData {
 // WITH
 // reference so many words that their word reference list
 // is both very large and not useful, so we don't store all their words.
-export interface WordReferenceData {
-  wordId: string;
-  referenceWordIds: string[];
-  hasMoreThan5000References?: boolean;
+export interface WordExportData {
+  spellings: string;
+  variants: string[];
+  hasMoreThan1000References?: boolean;
+  references: string[];
 }
 
-export interface WordVariant {
-  rawData: string;
-  pronunciation: string;
-  partsOfSpeech?: string[];
-  definitions: string[];
-  synonyms?: string[];
-  notes?: string[];
-  examples?: string[];
-  others?: string[]
-  isArchaic?: boolean;
-  isObsolete?: boolean;
-}
-
-export interface WordDisplayData {
-  wordId: string;
-  spellingsString: string;
-  variants: WordDisplayVariant[];
-  hasReferences?: boolean;
-}
-
-export interface WordDisplayVariant {
-  rawData: string;
-  partsOfSpeech?: string[];
-  isArchaic?: boolean;
-  isObsolete?: boolean;
-}

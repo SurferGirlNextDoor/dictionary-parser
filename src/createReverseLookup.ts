@@ -10,7 +10,7 @@ export const otherWordPattern = `(?<otherWord>${singleSpellingPattern})`;
  * @param definitionSection the definition section of the variant of the word (includes full details like synonyms, etc.)
  * @param reverseLookup the dictionary we will populate with reverse lookup data
  */
-export function populateReverseLookupForWordVariant(wordId: string, wordSpellings: string[], definitionSection: string, phraseWordLookups: PhraseWordLookups, wordIdToReferenceWordIds: Map<string, string[]>) {
+export function populateReverseLookupForWordVariant(wordId: string, wordSpellings: string[], definitionSection: string, phraseWordLookups: PhraseWordLookups, wordIdToReferenceWordIds: Map<string, Map<string, boolean>>) {
   const loweredDefinitionSection = definitionSection.toLowerCase();
   const otherPossibleWords = loweredDefinitionSection.split(/\s/);
 
@@ -32,9 +32,9 @@ export function populateReverseLookupForWordVariant(wordId: string, wordSpelling
         const referenceWordId = phraseWordLookups.loweredWordToWordId.get(otherWordLowered);
         if (referenceWordId) {
           if (!wordIdToReferenceWordIds.get(referenceWordId)) {
-            wordIdToReferenceWordIds.set(referenceWordId, []);
+            wordIdToReferenceWordIds.set(referenceWordId, new Map());
           }
-          wordIdToReferenceWordIds.get(referenceWordId)?.push(wordId);
+          wordIdToReferenceWordIds.get(referenceWordId)?.set(wordId, true);
         }
       }
 
@@ -51,9 +51,9 @@ export function populateReverseLookupForWordVariant(wordId: string, wordSpelling
             const referenceWordId = phraseWordLookups.loweredWordToWordId.get(phraseWord);
             if (referenceWordId) {
               if (!wordIdToReferenceWordIds.get(referenceWordId)) {
-                wordIdToReferenceWordIds.set(referenceWordId, []);
+                wordIdToReferenceWordIds.set(referenceWordId, new Map());
               }
-              wordIdToReferenceWordIds.get(referenceWordId)?.push(wordId);
+              wordIdToReferenceWordIds.get(referenceWordId)?.set(wordId, true);
             }
           }
         });

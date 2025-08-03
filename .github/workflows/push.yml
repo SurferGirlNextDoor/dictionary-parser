@@ -1,9 +1,9 @@
 name: Dictionary Data Upload
 
-# on:
-#  push:
-#    branches:
-#      - main
+on:
+ push:
+   branches:
+     - main
 
 permissions:
   id-token: write
@@ -56,14 +56,19 @@ jobs:
     - name: Verify and compress data
       run: |
         echo "Verifying output files exist..."
-        if [ ! -f "output/wordData.json" ]; then
-          echo "Error: wordData.json not found"
+        if [ ! -d "output" ] || [ -z "$(ls -A output)" ]; then
+          echo "Error: output directory not found or empty"
           exit 1
         fi
-        echo "Compressing wordData.json..."
-        jq -c . output/wordData.json | gzip -9 > output/wordData.json.gz
+        echo "Compressing JSON files..."
+        for file in output/*.json; do
+          if [ -f "$file" ]; then
+            echo "Compressing $file..."
+            jq -c . "$file" | gzip -9 > "${file}.gz"
+          fi
+        done
         echo "Compression completed. File sizes:"
-        ls -lh output/wordData.json*
+        ls -lh output/
 
     - name: Version
       id: version
@@ -76,12 +81,12 @@ jobs:
     - name: Upload to S3
       shell: bash
       env:
-        S3_URL: s3://${{ vars.S3_BUCKET }}/${{ steps.version.outputs.value }}/wordData.json.gz
+        S3_BASE_URL: s3://${{ vars.S3_BUCKET }}/${{ steps.version.outputs.value }}
       run: |
-        echo "Uploading to S3: $S3_URL"
-        if aws s3 cp output/wordData.json.gz "$S3_URL" --no-progress; then
+        echo "Uploading output folder to S3: $S3_BASE_URL"
+        if aws s3 sync output/ "$S3_BASE_URL/" --no-progress; then
           echo "✅ Upload successful"
-          echo -e "### 📦 S3 Upload Successful\n\n**Location:** \`${S3_URL}\`\n**Version:** \`${{ steps.version.outputs.value }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo -e "### 📦 S3 Upload Successful\n\n**Location:** \`${S3_BASE_URL}/\`\n**Version:** \`${{ steps.version.outputs.value }}\`" >> "$GITHUB_STEP_SUMMARY"
         else
           echo "❌ Upload failed"
           exit 1
@@ -89,4 +94,4 @@ jobs:
         
         # Verify upload
         echo "Verifying upload..."
-        aws s3 ls "$S3_URL" --human-readable
+        aws s3 ls "$S3_BASE_URL/" --human-readable --recursive

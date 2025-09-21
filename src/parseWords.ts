@@ -3,17 +3,23 @@ import { populateReverseLookupForWordVariant } from './createReverseLookup';
 import { PhraseWordLookups, buildPhraseWordLookups } from './buildPhraseWordLookups';
 import { WordData, WordDataRaw, WordExportData, WordVariantRaw } from './wordDataTypes';
 
-const maxWordReferencesToStore = 1000;
+const maxWordReferencesToStore = 5000;
 
 function getWordInfoForWordIds(wordIds: string[], wordIdToRawWord: Record<string, WordDataRaw>): string[] {
-  const references: string[] = [];
+  const references: Set<string> = new Set();
 
   wordIds.forEach(wordId => {
     const rawWord = wordIdToRawWord[wordId];
-    references.push(rawWord.spellingsString);
+    if (references.has(rawWord.spellingsString)) {
+      throw new Error(`duplicate ${rawWord.spellingsString}`);
+    }
+
+    references.add(rawWord.spellingsString);
   });
 
-  return references;
+  const uniqueReferences = Array.from(references.keys());
+
+  return uniqueReferences;
 }
 
 export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordExport: {[index: string]: WordExportData}} {
@@ -61,7 +67,7 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
           spellings: rawWord.spellingsString,
           variants,
           references,
-          hasMoreThan1000References: true
+          hasMoreThan5000References: true
         }
       } else {
         const references = getWordInfoForWordIds(referenceWordIds, wordIdToRawWord);

@@ -86,7 +86,7 @@ export interface WordData {
 export interface WordExportData {
   spellings: string;
   variants: string[];
-  hasMoreThan1000References?: boolean;
+  hasMoreThan5000References?: boolean;
   references: string[];
 }
 

@@ -5,13 +5,18 @@ import { WordData, WordDataRaw, WordExportData, WordVariantRaw } from './wordDat
 
 const maxWordReferencesToStore = 5000;
 
-function getWordInfoForWordIds(wordIds: string[], wordIdToRawWord: Record<string, WordDataRaw>): string[] {
+function getWordInfoForWordIds(spellings: string, wordIds: string[], wordIdToRawWord: Record<string, WordDataRaw>): string[] {
   const references: Set<string> = new Set();
 
   wordIds.forEach(wordId => {
     const rawWord = wordIdToRawWord[wordId];
     if (references.has(rawWord.spellingsString)) {
       throw new Error(`duplicate ${rawWord.spellingsString}`);
+    }
+
+    if (rawWord.spellingsString === spellings) {
+      // Don't add a reference for a word to itself.
+      return;
     }
 
     references.add(rawWord.spellingsString);
@@ -62,7 +67,7 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
     const referenceWordIds: string[] = Array.from(wordIdToReferenceWordIds.get(wordId)?.keys() || []);
     if (referenceWordIds) {
       if (referenceWordIds && referenceWordIds.length > maxWordReferencesToStore) {
-        const references = getWordInfoForWordIds(referenceWordIds.slice(0, maxWordReferencesToStore - 1), wordIdToRawWord);
+        const references = getWordInfoForWordIds(rawWord.spellingsString, referenceWordIds.slice(0, maxWordReferencesToStore - 1), wordIdToRawWord);
         wordIdToWordExport[wordId] = {
           spellings: rawWord.spellingsString,
           variants,
@@ -70,7 +75,7 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
           hasMoreThan5000References: true
         }
       } else {
-        const references = getWordInfoForWordIds(referenceWordIds, wordIdToRawWord);
+        const references = getWordInfoForWordIds(rawWord.spellingsString, referenceWordIds, wordIdToRawWord);
         wordIdToWordExport[wordId] = {
           spellings: rawWord.spellingsString,
           variants,

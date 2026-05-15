@@ -123,6 +123,6 @@ export interface VariantExport {
 export interface WordExportData {
   spellings: string;
   variants: VariantExport[];
-  thesaurusWords?: string[];
+  thesaurusWords?: WordToken[];
   references: string[][];
 }

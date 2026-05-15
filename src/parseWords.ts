@@ -1,9 +1,18 @@
 import { parseDefinition, printParseResult } from './parseDefinition';
 import { populateReverseLookupForWordVariant } from './createReverseLookup';
 import { PhraseWordLookups, buildPhraseWordLookups } from './buildPhraseWordLookups';
-import { WordData, WordDataRaw, WordExportData, WordVariantRaw } from './wordDataTypes';
+import { lookupAbbreviation } from './abbreviationLookup';
+import { SectionExport, VariantExport, WordData, WordDataRaw, WordExportData, WordToken, WordVariantRaw } from './wordDataTypes';
 
-const maxWordReferencesToStore = 5000;
+const referenceBatchSize = 500;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
 
 function getWordInfoForWordIds(spellings: string, wordIds: string[], wordIdToRawWord: Record<string, WordDataRaw>): string[] {
   const references: Set<string> = new Set();
@@ -25,6 +34,145 @@ function getWordInfoForWordIds(spellings: string, wordIds: string[], wordIdToRaw
   const uniqueReferences = Array.from(references.keys());
 
   return uniqueReferences;
+}
+
+// Split the pronunciation field into the actual pronunciation line and the etymology.
+// Etym: may appear inline on the first line or on subsequent lines.
+function extractEtym(pronunciation: string): { pron: string; etym?: string } {
+  const etymIndex = pronunciation.indexOf('Etym:');
+  if (etymIndex < 0) return { pron: pronunciation };
+  return {
+    pron: pronunciation.substring(0, etymIndex).trim(),
+    etym: pronunciation.substring(etymIndex + 'Etym:'.length).trim(),
+  };
+}
+
+// Try to find a dictionary word ID for an inflected form that doesn't have an exact match.
+// Tries common English inflection patterns in order of specificity.
+function findInflectedWordId(word: string, loweredWordToWordId: Map<string, string>): string | undefined {
+  const lookup = (w: string) => loweredWordToWordId.get(w);
+
+  // possessive: word's -> word
+  if (word.endsWith("'s") && word.length > 3) {
+    const id = lookup(word.slice(0, -2));
+    if (id) return id;
+  }
+
+  // -ies -> -y plural (berries -> berry)
+  if (word.endsWith('ies') && word.length > 4) {
+    const id = lookup(word.slice(0, -3) + 'y');
+    if (id) return id;
+  }
+
+  // -es plural (fishes -> fish, foxes -> fox)
+  if (word.endsWith('es') && word.length > 4) {
+    const id = lookup(word.slice(0, -2));
+    if (id) return id;
+  }
+
+  // -s plural (parts -> part, words -> word)
+  if (word.endsWith('s') && word.length > 3) {
+    const id = lookup(word.slice(0, -1));
+    if (id) return id;
+  }
+
+  // -ing -> base (pertaining -> pertain, containing -> contain)
+  if (word.endsWith('ing') && word.length > 5) {
+    const id = lookup(word.slice(0, -3));
+    if (id) return id;
+  }
+
+  // -ing -> base + e (resembling -> resemble, using -> use)
+  if (word.endsWith('ing') && word.length > 5) {
+    const id = lookup(word.slice(0, -3) + 'e');
+    if (id) return id;
+  }
+
+  // -ing with doubled consonant (running -> run, sitting -> sit)
+  if (word.endsWith('ing') && word.length > 6) {
+    const id = lookup(word.slice(0, -4));
+    if (id) return id;
+  }
+
+  // -ed -> base (called -> call, obtained -> obtain)
+  if (word.endsWith('ed') && word.length > 4) {
+    const id = lookup(word.slice(0, -2));
+    if (id) return id;
+  }
+
+  // -d -> base with e (opposed -> oppose, placed -> place, produced -> produce)
+  if (word.endsWith('d') && word.length > 3) {
+    const id = lookup(word.slice(0, -1));
+    if (id) return id;
+  }
+
+  // -ed with doubled consonant (dropped -> drop)
+  if (word.endsWith('ed') && word.length > 5) {
+    const id = lookup(word.slice(0, -3));
+    if (id) return id;
+  }
+
+  // -er comparative (kinder -> kind)
+  if (word.endsWith('er') && word.length > 4) {
+    const id = lookup(word.slice(0, -2));
+    if (id) return id;
+  }
+
+  // -er comparative with e (wider -> wide)
+  if (word.endsWith('er') && word.length > 4) {
+    const id = lookup(word.slice(0, -2) + 'e');
+    if (id) return id;
+  }
+
+  return undefined;
+}
+
+// Tokenize text into words (with optional id lookup), digits, and punctuation/symbols.
+// Words preserve their original case; id is set when the word exists in the dictionary.
+// Non-alphabetic, non-whitespace characters are emitted as symbol tokens with no id.
+function tokenizeText(text: string, loweredWordToWordId: Map<string, string>): WordToken[] {
+  const tokens: WordToken[] = [];
+  // Matches: multi-char word, single letter, digit run, or single non-whitespace symbol
+  const tokenRegex = /[a-zA-Z][a-zA-Z'-]*[a-zA-Z]|[a-zA-Z]|\d+|[^\s\w]/g;
+  let match;
+  while ((match = tokenRegex.exec(text)) !== null) {
+    const tokenText = match[0];
+    if (/^[a-zA-Z]/.test(tokenText)) {
+      const original = tokenText.replace(/^['-]+|['-]+$/g, '');
+      const cleaned = original.toLowerCase();
+      const id = loweredWordToWordId.get(cleaned)
+        ?? lookupAbbreviation(original, loweredWordToWordId)
+        ?? findInflectedWordId(cleaned, loweredWordToWordId);
+      const token: WordToken = { text: tokenText };
+      if (id) token.id = id;
+      tokens.push(token);
+    } else {
+      tokens.push({ text: tokenText });
+    }
+  }
+  return tokens;
+}
+
+function buildVariantExport(rawVariant: WordVariantRaw, parsedVariant: WordData['variants'][number], loweredWordToWordId: Map<string, string>): VariantExport {
+  const { pron, etym } = extractEtym(rawVariant.pronunciation);
+
+  const sections: SectionExport[] = [];
+
+  if (etym) {
+    sections.push({ type: 'etym', marker: 'Etym:', text: etym, words: tokenizeText(etym, loweredWordToWordId) });
+  }
+
+  for (const section of parsedVariant.sections) {
+    const exported: SectionExport = {
+      type: section.type,
+      text: section.text,
+      words: tokenizeText(section.text, loweredWordToWordId),
+    };
+    if (section.marker) exported.marker = section.marker;
+    sections.push(exported);
+  }
+
+  return { pronunciation: pron, sections };
 }
 
 export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordExport: {[index: string]: WordExportData}} {
@@ -63,24 +211,26 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
   // Find words that reference this word.
   wordIdList.forEach(wordId => {
     const rawWord = wordIdToRawWord[wordId];
-    const variants = rawWord.variants.map(variant => variant.rawData);
+    const parsedWord = wordIdToWord[wordId];
     const referenceWordIds: string[] = Array.from(wordIdToReferenceWordIds.get(wordId)?.keys() || []);
     if (referenceWordIds) {
-      if (referenceWordIds && referenceWordIds.length > maxWordReferencesToStore) {
-        const references = getWordInfoForWordIds(rawWord.spellingsString, referenceWordIds.slice(0, maxWordReferencesToStore - 1), wordIdToRawWord);
-        wordIdToWordExport[wordId] = {
-          spellings: rawWord.spellingsString,
-          variants,
-          references,
-          hasMoreThan5000References: true
-        }
-      } else {
-        const references = getWordInfoForWordIds(rawWord.spellingsString, referenceWordIds, wordIdToRawWord);
-        wordIdToWordExport[wordId] = {
-          spellings: rawWord.spellingsString,
-          variants,
-          references,
-        }
+      const references = getWordInfoForWordIds(rawWord.spellingsString, referenceWordIds, wordIdToRawWord);
+
+      const variants: VariantExport[] = rawWord.variants.map((rawVariant, i) =>
+        buildVariantExport(rawVariant, parsedWord.variants[i], phraseWordLookups.loweredWordToWordId)
+      );
+
+      const thesaurusWordSet = new Set<string>();
+      parsedWord.variants.forEach(variant => {
+        (variant.thesaurusWords || []).forEach(w => thesaurusWordSet.add(w));
+      });
+      const thesaurusWords = Array.from(thesaurusWordSet);
+
+      wordIdToWordExport[wordId] = {
+        spellings: rawWord.spellingsString,
+        variants,
+        ...(thesaurusWords.length > 0 && { thesaurusWords }),
+        references: chunkArray(references, referenceBatchSize),
       }
     }
   });

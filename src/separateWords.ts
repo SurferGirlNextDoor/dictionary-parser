@@ -11,8 +11,10 @@ export const anyCharOrNewline = '(?:.|\n)';
 export const spellingPattern = `(?<spelling>${spellingPatternBase})`;
 
 // Use [ ] to represent a space because \s and \f don't seem to work for some reason.
-const doubleNewlineOrStartOfDefinition = '\n(?:\n|[ ]*[(]a)';
-const notADoubleNewlineOrStartOfDefinition = '\n(?!\n)(?![ ]*[(]a)';
+// Use a lookahead for the `(a)` case so the lettered marker is not consumed
+// and remains intact at the start of the definition section.
+const doubleNewlineOrStartOfDefinition = '\n(?:\n|(?=[ ]*[(]a[)]))';
+const notADoubleNewlineOrStartOfDefinition = '\n(?!\n)(?![ ]*[(]a[)])';
 
 const pronunciationPattern = `(?<pronunciation>(?:${notADoubleNewlineOrStartOfDefinition}|[^\n])*)`;
 
@@ -25,7 +27,7 @@ const fullPattern = `(?<rawData>${spellingPattern}\n${pronunciationPattern}${dou
 // console.log(fullPattern.replace(/\n/g, '\\n'))
 
 const lastWordInData = 'ZYTHUM';
-const totalNumberOfWords = 98859;
+const totalNumberOfWords = 98860;
 
 function addWord(spellingToWord: Record<string, WordDataRaw>, 
   wordIdList: string[], 

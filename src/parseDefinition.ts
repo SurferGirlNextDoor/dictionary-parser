@@ -3,7 +3,8 @@
 import fs from 'fs';
 import { spellingPattern } from './separateWords';
 import { parsePartsOfSpeech } from './parsePartsOfSpeech';
-import { WordVariant, WordVariantRaw } from './wordDataTypes';
+import { parseThesaurusWords } from './parseSynonymWords';
+import { SectionType, VariantSection, WordVariant, WordVariantRaw } from './wordDataTypes';
 
 const originalDefPath = './output/originalDef.json';
 const parsedDefPath = './output/parsedDef.json';
@@ -14,7 +15,8 @@ const paragraphSplitterPattern = '^(?<paragraph>(\n(?!\n)|[^\n])*)\n\n';
 
 const baseDefinitionPattern = `(?<defaultDef>^Defn:.*)?`
 const numberedDefinitionPattern = `(?<numberedDef>^[0-9].*)?`
-const letteredDefinitionPattern = `(?<letteredDef>^[(][a-c][)].*)?`
+// Extended from [a-c] to [a-z] — lettered definitions go up to (t) in this dataset
+const letteredDefinitionPattern = `(?<letteredDef>^[(][a-z][)].*)?`
 
 const synonymPattern = `(?<synonym>^Syn..*)?`
 const notePattern = `(?<note>^Note:..*)?`
@@ -50,6 +52,28 @@ export function cleanDefinitionTestingFiles() {
   }
 }
 
+function stripMarker(text: string, marker: string): string {
+  if (!text.startsWith(marker)) return text;
+  const rest = text.slice(marker.length);
+  return rest.startsWith(' ') || rest.startsWith('\n') ? rest.slice(1) : rest;
+}
+
+function getSectionTypeAndMarker(text: string): { type: SectionType; marker?: string } {
+  const firstLine = text.split('\n')[0];
+  if (firstLine.startsWith('Defn:')) return { type: 'defn', marker: 'Defn:' };
+  const numberedMatch = firstLine.match(/^(\d+)\./);
+  if (numberedMatch) return { type: 'numbered', marker: numberedMatch[0] };
+  const letteredMatch = firstLine.match(/^\(([a-z])\)/);
+  if (letteredMatch) return { type: 'lettered', marker: letteredMatch[0] };
+  // Suffix/prefix entries start with a hyphen then uppercase, e.g. "-ANCE" or "-ARD; -ART"
+  if (firstLine.match(/^-[A-Z]/)) return { type: 'suffix', marker: firstLine };
+  if (firstLine.startsWith('Syn.')) return { type: 'syn', marker: 'Syn.' };
+  if (firstLine.startsWith('Note:')) return { type: 'note', marker: 'Note:' };
+  if (firstLine.startsWith('OTHER:')) return { type: 'other', marker: 'OTHER:' };
+  if (firstLine.startsWith('EXAMPLE:')) return { type: 'example', marker: 'EXAMPLE:' };
+  return { type: 'unlabeled' };
+}
+
 export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): WordVariant {
   const definitionSectioningRegex = new RegExp(paragraphSplitterPattern, 'mg');
   let rawSections: string[] = [];
@@ -58,7 +82,8 @@ export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): W
   const wordVariant: WordVariant = {
     pronunciation: variantRaw.pronunciation,
     rawData: variantRaw.rawData,
-    definitions: []
+    definitions: [],
+    sections: [],
   };
 
   const partsOfSpeechResult = parsePartsOfSpeech(spelling, variantRaw.pronunciation);
@@ -149,6 +174,20 @@ export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): W
         wordVariant.examples = [];
       }
       wordVariant.examples.push(rawDefinitionSection);
+    }
+
+    // Populate sections in document order
+    const { type, marker } = getSectionTypeAndMarker(rawDefinitionSection);
+    const text = marker ? stripMarker(rawDefinitionSection, marker) : rawDefinitionSection;
+    const section: VariantSection = { type, text };
+    if (marker) section.marker = marker;
+    wordVariant.sections.push(section);
+  }
+
+  if (wordVariant.synonyms && wordVariant.synonyms.length > 0) {
+    const thesaurusWords = parseThesaurusWords(wordVariant.synonyms);
+    if (thesaurusWords.length > 0) {
+      wordVariant.thesaurusWords = thesaurusWords;
     }
   }
 

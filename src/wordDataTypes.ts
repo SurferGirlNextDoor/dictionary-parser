@@ -31,17 +31,37 @@ export interface WordVariantRaw {
   definitionSection: string;
 }
 
+export type SectionType =
+  | 'etym'
+  | 'defn'
+  | 'numbered'
+  | 'lettered'
+  | 'suffix'
+  | 'syn'
+  | 'note'
+  | 'other'
+  | 'example'
+  | 'unlabeled';
+
+export interface VariantSection {
+  type: SectionType;
+  marker?: string;
+  text: string;
+}
+
 export interface WordVariant {
   rawData: string;
   pronunciation: string;
   partsOfSpeech?: string[];
   definitions: string[];
   synonyms?: string[];
+  thesaurusWords?: string[];
   notes?: string[];
   examples?: string[];
-  others?: string[]
+  others?: string[];
   isArchaic?: boolean;
   isObsolete?: boolean;
+  sections: VariantSection[];
 }
 
 export interface WordData {
@@ -49,6 +69,23 @@ export interface WordData {
   spellingsString: string;
   spellings: string[];
   variants: WordVariant[];
+}
+
+export interface WordToken {
+  text: string;
+  id?: string;
+}
+
+export interface SectionExport {
+  type: SectionType;
+  marker?: string;
+  text: string;
+  words: WordToken[];
+}
+
+export interface VariantExport {
+  pronunciation: string;
+  sections: SectionExport[];
 }
 
 // Some words:
@@ -85,8 +122,7 @@ export interface WordData {
 // is both very large and not useful, so we don't store all their words.
 export interface WordExportData {
   spellings: string;
-  variants: string[];
-  hasMoreThan5000References?: boolean;
-  references: string[];
+  variants: VariantExport[];
+  thesaurusWords?: string[];
+  references: string[][];
 }
-

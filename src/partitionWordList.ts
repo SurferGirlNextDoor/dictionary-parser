@@ -1,6 +1,6 @@
 import { WordDataRaw } from './wordDataTypes';
 
-const partitionSplitThreshold = 4000;
+const partitionSplitThreshold = 1000;
 const validFirstLetterRegex = /^[A-Z]$/;
 
 
@@ -15,42 +15,37 @@ function getFirstLetter(spelling: string, currentFirstLetter: string): string {
   return currentFirstLetter;
 }
 
-function generatePartitionName(startLetter: string, endLetter: string): string {
-  if (startLetter === endLetter) {
-    return startLetter;
-  }
-  return `${startLetter}-${endLetter}`;
-}
-
 export function partitionWordList(wordIdList: string[], wordIdToRawWord: Record<string, WordDataRaw>): {[index: string]: string[]} {
-  let currentPartitionStartLetter = 'A';
   let currentFirstLetter = 'A';
   let nameToWordIdPartition: {[index: string]: string[]} = {};
   let currentPartition: string[] = [];
+  let letterPartitionCount: {[letter: string]: number} = {};
+
+  function flushPartition(letter: string) {
+    if (currentPartition.length === 0) return;
+
+    letterPartitionCount[letter] = (letterPartitionCount[letter] || 0) + 1;
+    const count = letterPartitionCount[letter];
+    const partitionName = count === 1 ? letter : `${letter}${count}`;
+    nameToWordIdPartition[partitionName] = currentPartition;
+    currentPartition = [];
+  }
 
   wordIdList.forEach(wordId => {
     const spelling = wordIdToRawWord[wordId].spellingsString;
     const firstLetter = getFirstLetter(spelling, currentFirstLetter);
 
-    // If the first letter changed, consider moving the next word list to a new partition.
-    // Since the current partition is done,
-    // assign it a name and add it to the map we will return.
     if (firstLetter !== currentFirstLetter) {
-      if (currentPartition.length > partitionSplitThreshold) {
-        const partitionName = generatePartitionName(currentPartitionStartLetter, currentFirstLetter);
-        nameToWordIdPartition[partitionName] = currentPartition;
-        currentPartitionStartLetter = firstLetter;
-        currentPartition = [];
-      }
+      flushPartition(currentFirstLetter);
+      currentFirstLetter = firstLetter;
+    } else if (currentPartition.length >= partitionSplitThreshold) {
+      flushPartition(currentFirstLetter);
     }
 
-    currentFirstLetter = firstLetter;
     currentPartition.push(wordId);
   });
 
-  // Add the last partition.
-  const finalPartitionName = generatePartitionName(currentPartitionStartLetter, currentFirstLetter);
-  nameToWordIdPartition[finalPartitionName] = currentPartition;
+  flushPartition(currentFirstLetter);
 
   // Visually inspect the partition breakdown:
   Object.keys(nameToWordIdPartition).forEach(partitionName => {

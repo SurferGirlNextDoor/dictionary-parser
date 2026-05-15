@@ -32,22 +32,36 @@ const {wordIdToRawWord, wordIdList} = separateWords(dictionaryData);
 
 // Parse the words into the format we need to populate the word lookup,
 // including the reverse lookups, into a db.
-const { wordIdToWord, wordIdToWordExport } = parseWords(wordIdToRawWord, wordIdList);
+const { wordIdToWord, wordIdToWordExport, unresolvedThesaurusWords } = parseWords(wordIdToRawWord, wordIdList);
 
 // Build out a lookup of part of speech to all the words that identify as that part of speech.
 // const partOfSpeechToWordIds: {[index: string]: string[]} = buildPartOfSpeechLookup(wordIdToWord);
 
 // Write out partitioned word list data.
-const nameToWordIdPartition = partitionWordList(wordIdList);
+const nameToWordIdPartition = partitionWordList(wordIdList, wordIdToRawWord);
 Object.keys(nameToWordIdPartition).forEach(partitionName => {
-  const  wordData = createWordDataForPartition(nameToWordIdPartition[partitionName], wordIdToWordExport);
- 
+  const partitionWordIds = nameToWordIdPartition[partitionName];
+  const wordData = createWordDataForPartition(partitionWordIds, wordIdToWordExport);
+
   // Generate partition file names.
   const wordDataFilePath = `${wordsDataPathPrefix}${partitionName}.json`;
+  const spellingsFilePath = `${spellingsToWordIdsPathPrefix}${partitionName}.json`;
 
   // Write out partition data.
   fs.writeFileSync(wordDataFilePath, JSON.stringify(wordData, null, 2));
+
+  // Write spelling → word UUID lookup for this partition.
+  const spellingToWordId: Record<string, string> = {};
+  partitionWordIds.forEach(wordId => {
+    wordIdToRawWord[wordId].spellings.forEach(spelling => {
+      spellingToWordId[spelling] = wordId;
+    });
+  });
+  fs.writeFileSync(spellingsFilePath, JSON.stringify(spellingToWordId, null, 2));
 });
+
+// Write thesaurus words that have no matching dictionary entry for manual review.
+fs.writeFileSync('./output/unresolvedThesaurusWords.json', JSON.stringify(Array.from(unresolvedThesaurusWords).sort(), null, 2));
 
 // fs.writeFileSync(partsOfSpeechLookupPath, JSON.stringify(partOfSpeechToWordIds, null, 2));
 

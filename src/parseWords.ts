@@ -175,7 +175,7 @@ function buildVariantExport(rawVariant: WordVariantRaw, parsedVariant: WordData[
   return { pronunciation: pron, sections };
 }
 
-export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordExport: {[index: string]: WordExportData}} {
+export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordExport: {[index: string]: WordExportData}, unresolvedThesaurusWords: Set<string>} {
   // Find the spellings of all the available words, including words with spaces,
   // and populate a lookup based on word id for all available words.
   const phraseWordLookups: PhraseWordLookups = buildPhraseWordLookups(wordIdList, wordIdToRawWord);
@@ -207,6 +207,7 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
 
   // Populate reverse lookup reference data.
   const wordIdToWordExport: {[index: string]: WordExportData} = {};
+  const unresolvedThesaurusWords = new Set<string>();
 
   // Find words that reference this word.
   wordIdList.forEach(wordId => {
@@ -220,16 +221,30 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
         buildVariantExport(rawVariant, parsedWord.variants[i], phraseWordLookups.loweredWordToWordId)
       );
 
-      const thesaurusWordSet = new Set<string>();
+      const thesaurusSpellingsSeen = new Set<string>();
+      const thesaurusTokens: WordToken[] = [];
       parsedWord.variants.forEach(variant => {
-        (variant.thesaurusWords || []).forEach(w => thesaurusWordSet.add(w));
+        (variant.thesaurusWords || []).forEach(word => {
+          const lowered = word.toLowerCase();
+          if (!thesaurusSpellingsSeen.has(lowered)) {
+            thesaurusSpellingsSeen.add(lowered);
+            const id = phraseWordLookups.loweredWordToWordId.get(lowered)
+              ?? findInflectedWordId(lowered, phraseWordLookups.loweredWordToWordId);
+            const token: WordToken = { text: word };
+            if (id) {
+              token.id = id;
+            } else {
+              unresolvedThesaurusWords.add(lowered);
+            }
+            thesaurusTokens.push(token);
+          }
+        });
       });
-      const thesaurusWords = Array.from(thesaurusWordSet);
 
       wordIdToWordExport[wordId] = {
         spellings: rawWord.spellingsString,
         variants,
-        ...(thesaurusWords.length > 0 && { thesaurusWords }),
+        ...(thesaurusTokens.length > 0 && { thesaurusWords: thesaurusTokens }),
         references: chunkArray(references, referenceBatchSize),
       }
     }
@@ -240,5 +255,6 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
   return {
     wordIdToWord,
     wordIdToWordExport,
+    unresolvedThesaurusWords,
   };
 }

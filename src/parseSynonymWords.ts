@@ -42,7 +42,7 @@ export function parseThesaurusWords(synonymSections: string[]): string[] {
 
         if (word && !seen.has(word.toLowerCase())) {
           seen.add(word.toLowerCase());
-          thesaurusWords.push(word.toLowerCase());
+          thesaurusWords.push(word);
         }
       }
     }

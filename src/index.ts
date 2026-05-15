@@ -37,6 +37,9 @@ const { wordIdToWord, wordIdToWordExport, unresolvedThesaurusWords } = parseWord
 // Build out a lookup of part of speech to all the words that identify as that part of speech.
 // const partOfSpeechToWordIds: {[index: string]: string[]} = buildPartOfSpeechLookup(wordIdToWord);
 
+// Ensure the output directory exists.
+fs.mkdirSync('./output', { recursive: true });
+
 // Write out partitioned word list data.
 const nameToWordIdPartition = partitionWordList(wordIdList, wordIdToRawWord);
 Object.keys(nameToWordIdPartition).forEach(partitionName => {

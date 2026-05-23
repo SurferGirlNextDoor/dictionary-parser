@@ -9,7 +9,7 @@ export interface PartOfSpeechParseResult {
 const pronunciationSectionPattern = `^(?<definitelyPronunciation>[^ ,]*)(?<maybePartOfSpeech>.*?)(?<etymology>Etym.*)?$`;
 
 const nounRegex = /(n[.]|n [.]| n[,]|n[ ]*$|n[;] pl)/;
-const verbRegex = /v[.]/;
+const verbRegex = /v\.(?![it]\.)/;
 const verbIntransitiveRegex = /(v[.]i[.]|v[.] i[.])/;
 const verbTransitiveRegex = /(v[.]t[.]|v[.] t[.])/;
 const adverbRegex = /adv[.]/;
@@ -78,7 +78,7 @@ function parsePartsOfSpeechSection(spelling: string, maybePartOfSpeech: string):
 
   const isConjugation = conjugationRegex.test(maybePartOfSpeech);
   if (isConjugation) {
-    partsOfSpeech.push(PARTS_OF_SPEECH.CONJUGATION);
+    partsOfSpeech.push(PARTS_OF_SPEECH.CONJUNCTION);
   }
 
   const isImperative = imperativeRegex.test(maybePartOfSpeech);

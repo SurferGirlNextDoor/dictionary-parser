@@ -6,6 +6,7 @@ import { parseWords } from './parseWords';
 import { partitionWordList } from './partitionWordList';
 import { createWordDataForPartition } from './createWordDataForPartition';
 import { buildPartOfSpeechLookup } from './buildPartOfSpeechLookup';
+import { computeComponents } from './computeComponents';
 
 // Define the input and output file paths.
 const dictionaryDataPath = './data/gutenbergWebstersDictionaryCleaned.txt';
@@ -39,6 +40,15 @@ const { wordIdToWord, wordIdToWordExport, unresolvedThesaurusWords } = parseWord
 
 // Ensure the output directory exists.
 fs.mkdirSync('./output', { recursive: true });
+
+// Compute connected components across the full word graph and stamp each
+// export entry with its component ID before writing partition files.
+const { wordIdToComponentId, summary: componentSummary } = computeComponents(wordIdList, wordIdToWordExport);
+wordIdList.forEach(wordId => {
+  wordIdToWordExport[wordId].componentId = wordIdToComponentId.get(wordId) ?? 0;
+});
+fs.writeFileSync('./output/componentSummary.json', JSON.stringify(componentSummary, null, 2));
+console.log(`Components: ${componentSummary.totalComponents} total — main component contains ${componentSummary.mainComponentSize} words`);
 
 // Write out partitioned word list data.
 const nameToWordIdPartition = partitionWordList(wordIdList, wordIdToRawWord);

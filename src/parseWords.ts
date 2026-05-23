@@ -1,7 +1,7 @@
-import { parseDefinition, printParseResult } from './parseDefinition';
+import { parseDefinition } from './parseDefinition';
 import { populateReverseLookupForWordVariant } from './createReverseLookup';
 import { PhraseWordLookups, buildPhraseWordLookups } from './buildPhraseWordLookups';
-import { lookupAbbreviation } from './abbreviationLookup';
+import { lookupAbbreviation, extractEtymLanguages } from './abbreviationLookup';
 import { SectionExport, VariantExport, WordData, WordDataRaw, WordExportData, WordToken, WordVariantRaw } from './wordDataTypes';
 
 const referenceBatchSize = 500;
@@ -172,7 +172,14 @@ function buildVariantExport(rawVariant: WordVariantRaw, parsedVariant: WordData[
     sections.push(exported);
   }
 
-  return { pronunciation: pron, sections };
+  const etymLanguages = etym ? extractEtymLanguages(etym) : [];
+
+  const result: VariantExport = { pronunciation: pron, sections };
+  if (parsedVariant.partsOfSpeech?.length) result.partsOfSpeech = parsedVariant.partsOfSpeech;
+  if (parsedVariant.isArchaic) result.isArchaic = true;
+  if (parsedVariant.isObsolete) result.isObsolete = true;
+  if (etymLanguages.length) result.etymLanguages = etymLanguages;
+  return result;
 }
 
 export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdList: string[]): {wordIdToWord: {[index: string]: WordData}, wordIdToWordExport: {[index: string]: WordExportData}, unresolvedThesaurusWords: Set<string>} {
@@ -241,16 +248,21 @@ export function parseWords(wordIdToRawWord: Record<string, WordDataRaw>, wordIdL
         });
       });
 
+      const wordIsArchaic = parsedWord.variants.some(v => v.isArchaic);
+      const wordIsObsolete = parsedWord.variants.some(v => v.isObsolete);
+
       wordIdToWordExport[wordId] = {
         spellings: rawWord.spellingsString,
+        ...(wordIsArchaic && { isArchaic: true }),
+        ...(wordIsObsolete && { isObsolete: true }),
+        componentId: 0, // populated after computeComponents runs in index.ts
         variants,
         ...(thesaurusTokens.length > 0 && { thesaurusWords: thesaurusTokens }),
+        referenceCount: references.length,
         references: chunkArray(references, referenceBatchSize),
       }
     }
   });
-
-  printParseResult();
 
   return {
     wordIdToWord,

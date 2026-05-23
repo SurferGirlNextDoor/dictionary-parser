@@ -9,7 +9,7 @@ export const PARTS_OF_SPEECH = {
   PRESENT_PARTICIPLE: 'p.pr.',
   PAST_PARTICIPLE: 'p.p.',
   INTERJECTION: 'interj.',
-  CONJUGATION: 'conj.',
+  CONJUNCTION: 'conj.',
   IMPERATIVE: 'imp.'
 };
 
@@ -85,6 +85,10 @@ export interface SectionExport {
 
 export interface VariantExport {
   pronunciation: string;
+  partsOfSpeech?: string[];
+  isArchaic?: boolean;
+  isObsolete?: boolean;
+  etymLanguages?: string[];
   sections: SectionExport[];
 }
 
@@ -122,7 +126,11 @@ export interface VariantExport {
 // is both very large and not useful, so we don't store all their words.
 export interface WordExportData {
   spellings: string;
+  isArchaic?: boolean;
+  isObsolete?: boolean;
+  componentId: number;
   variants: VariantExport[];
   thesaurusWords?: WordToken[];
+  referenceCount: number;
   references: string[][];
 }

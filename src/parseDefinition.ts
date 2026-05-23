@@ -41,8 +41,6 @@ const definitionFormatOptions = [
 const fullPattern = `(?<rawDefinitionData>${definitionFormatOptions})`;
 
 
-let numberOfMismatches = 0;
-
 export function cleanDefinitionTestingFiles() {
   if (fs.existsSync(originalDefPath)) {
     fs.unlinkSync(originalDefPath);
@@ -199,14 +197,7 @@ export function parseDefinition(spelling: string, variantRaw: WordVariantRaw): W
 
     console.log('spelling', spelling)
     throw new Error('***************************** originalDefinitionSection did not match parsed rawData');
-    numberOfMismatches++;
   }
 
   return wordVariant;
-}
-
-export function printParseResult() {
-  if (numberOfMismatches) {
-    console.log('mismatch count:', numberOfMismatches)
-  }
 }

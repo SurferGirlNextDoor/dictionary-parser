@@ -89,9 +89,9 @@ function findAllWords(text: string): Record<string, number> {
 
     if (allWords[spelling]) {
       allWords[spelling] = allWords[spelling] + 1;
+    } else {
+      allWords[spelling] = 1;
     }
-    
-    allWords[spelling] = 1;
   }
 
   const wordsFoundCount = Object.keys(allWords).length;
